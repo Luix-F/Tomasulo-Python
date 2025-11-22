@@ -1,6 +1,5 @@
 class Instrucao:
     
-
     def __init__(self, nome, i, j, k, issue, exec_completa, write_result, tipo, vida):
         self.nome = nome
         self.i = i
@@ -48,16 +47,6 @@ class Unidades_Funcionais:
 
 
 class Tomasulo:
-    TEMPO_EXECUCAO = {
-        "ADD": 2,    # Adição/Subtração/Lógica
-        "SUB": 2,
-        "MULT": 10,  # Multiplicação
-        "DIV": 40,   # Divisão
-        "LOAD": 2,   # Load (Acesso à memória)
-        "STORE": 2,  # Store (Acesso à memória)
-        "BEQ": 3     # Branch Equal (Salto condicional)
-        # Assuma que a instrução "end" é ignorada na execução
-    }
 
     def ler_arquivo(self, caminho_arquivo):
         try:
