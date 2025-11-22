@@ -1,6 +1,6 @@
 class Instrucao:
     
-    def __init__(self, nome, i, j, k, issue, exec_completa, write_result, tipo, posi, status):
+    def __init__(self, nome, i, j, k, issue, exec_completa, write_result, commit,tipo, posi, status, value, podeExecutar):
         self.nome = nome
         self.i = i
         self.j = j
@@ -8,9 +8,12 @@ class Instrucao:
         self.issue = issue
         self.exec_completa = exec_completa
         self.write_result = write_result
+        self.commit = commit
         self.tipo = tipo
         self.posi = posi
         self.status = status
+        self.value = value
+        self.podeExecutar = podeExecutar
 
     def __str__(self):
         return (f"Instrução: {self.nome}, i: {self.i}, j: {self.j}, k: {self.k}, "
@@ -58,7 +61,7 @@ class Memory:
     def getM(self, regs1, regs2, regs3):
         posi = self.getR(regs3) + int(regs2)
         self.setR(regs1, self.Mem[posi])
-        return regs1, self.Mem[posi]
+        return self.Mem[posi]
         
     def setM(self, regs1, regs2, regs3):
         posi = self.getR(regs3) + int(regs2)
@@ -146,9 +149,12 @@ class Tomasulo:
                 issue= -1,          # Será definido quando a instrução for emitida
                 exec_completa= -1,  # Será definido quando a execução terminar
                 write_result= -1,   # Será definido quando o resultado for escrito
+                commit = -1,
                 tipo= ty,
                 posi= y,
-                status= "none"
+                status= "none",
+                value= "null",
+                podeExecutar = True
             )
             y = y + 1
             instrucoes_decodificadas.append(instrucao)
@@ -183,7 +189,7 @@ class Tomasulo:
                 u.instrucao.status = "UF"
           
     def atualiza_clock(self, ufs, clock):
-        tmpInst = Instrucao(0,0,0,0,0,0,0,0,0,0)
+        tmpInst = Instrucao(0,0,0,0,0,0,0,0,0,0,0,0,0)
         for u in ufs:
             if u.Ocupado == True and u.instrucao.exec_completa == -1:
                 if u.tempo == u.vida:
@@ -194,61 +200,99 @@ class Tomasulo:
                 else:
                     u.vida = u.vida + 1
                     #u.instrucao.exec_completa = 10
-    
-    def atualizar_inst(self, instrucoes, clock, m):
+
+    def verifica_desvio(self, posi, instrucoes):
+        #print(posi)
+        for i in range(posi):
+            #print("\n\n")
+            #print(instrucoes[i].tipo)
+            if instrucoes[i].tipo == "BR" and instrucoes[i].exec_completa == -1:
+                return False
+        return True
+        
+    def WR(self, instrucoes, clock):
         for instr in instrucoes:
-            if instr.exec_completa > -1 & instr.write_result == -1:
+            if instr.exec_completa > -1 and instr.write_result == -1 and instr.podeExecutar:
                 instr.write_result = clock
+                instr.status = "Write Result"
+                print(instr.nome)
+                print("Write Result")
+                
+    
+    def atualizar_inst(self, instrucoes, clock, m, pc):
+        for instr in instrucoes:
+            if instr.write_result > -1 and instr.commit == -1 and self.verifica_desvio(instr.posi, instrucoes) and instr.podeExecutar == True:
+                instr.commit = clock
                 instr.status = "commit"
-                if instr.tipo == "ADD":
+                if instr.nome == "ADD":
                     m.setR(instr.i, (m.getR(instr.j) + m.getR(instr.k)))
-                if instr.tipo == "SUB":
+                if instr.nome == "SUB":
                     m.setR(instr.i, (m.getR(instr.j) - m.getR(instr.k)))
-                if instr.tipo == "MULT":
+                if instr.nome == "MULT":
                     m.setR(instr.i, (m.getR(instr.j) * m.getR(instr.k)))
-                if instr.tipo == "DIV":
+                if instr.nome == "DIV":
                     m.setR(instr.i, (m.getR(instr.j) / m.getR(instr.k)))
 
-                if instr.tipo == "LD":
+                if instr.nome == "LD":
                     instr.i = m.getM(instr.i, instr.j, instr.k)
                     
-                if instr.tipo == "SW":
+                if instr.nome == "SW":
                     m.setM(instr.i, instr.j, instr.k)
                     
-                if instr.tipo == "BEQ":
+                if instr.nome == "BEQ":
+                    
                     if (m.getR(instr.j) == m.getR(instr.k)):
-                        self # desvio
-                if instr.tipo == "BNE":
+                        print("\n\n\n\n")
+                        for y in range(instr.posi+1, instr.posi+int(instr.i)):
+                            instrucoes[y].podeExecutar = False
+                            instrucoes[y].status = "nop"
+                        pc[0] + int(instr.i)
+                if instr.nome == "BNE":
                     if (m.getR(instr.j) != m.getR(instr.k)):
-                        self # desvio
+                        for y in range(pc[0]+1, pc[0]+int(instr.i)):
+                            instrucoes[y].podeExecutar = False
+                            instrucoes[y].status = "nop"
+                        pc[0] + int(instr.i)
                 
                 
 
 
     def imprimir_tabela(self, instrucoes):
-        print(f"{'Nome':<8} {'i':<3} {'j':<3} {'k':<3} {'Issue':<6} {'Exec':<6} {'Write':<6} {'Tipo':<6} {'Posi':<4} {'status':<6}")
+        print(f"{'Nome':<8} {'i':<3} {'j':<3} {'k':<3} {'Issue':<6} {'Exec':<6} {'Write':<6} {'Commit':<6}  {'Tipo':<6} {'Posi':<4} {'status':<12}")
         print("-" * 60)
 
         for inst in instrucoes:
             print(f"{inst.nome:<8} {inst.i:<3} {inst.j:<3} {inst.k:<3} "
-                f"{inst.issue:<6} {inst.exec_completa:<6} {inst.write_result:<6} "
-                f"{inst.tipo:<6} {inst.posi:<4} {inst.status:<6}")
+                f"{inst.issue:<6} {inst.exec_completa:<6} {inst.write_result:<6} {inst.commit:<6} "
+                f"{inst.tipo:<6} {inst.posi:<4} {inst.status:<12}")
 
     def sem_dependencias(self, instrucoes, instruc):#, i, j, k, posi):
         print("---------------------------------------")
         for i in range(instruc.posi):
-            print(instrucoes[i].nome + instrucoes[i].i +" -- " + instruc.nome +" " + instruc.j + " " + instruc.k)
-            if ((instruc.j == instrucoes[i].i or instruc.k == instrucoes[i].i )and instrucoes[i].exec_completa == -1):
+            #print(instrucoes[i].nome + instrucoes[i].i +" -- " + instruc.nome +" " + instruc.j + " " + instruc.k)
+            if ((instruc.j == instrucoes[i].i or instruc.k == instrucoes[i].i )and instrucoes[i].exec_completa == -1): # verifica dependencia verdadeira
                 print("DEPENDECIA")
                 return False
         print("sem dependencia")
         return True
         
+    def verifica_parada(self, instrucoes, pc):
+    
+        # Retorna True se a simulação deve parar, False caso contrário.
+        
+        # Verifica se ainda há instruções para buscar
+        # Se o PC for menor que o total de instruções, ainda tem o que fazer.
+        if pc[0] < len(instrucoes):
+            return False
 
+        return not any(obj.status not in ("commit", "nop") for obj in instrucoes)
+     
     def simulador(self):
         
         #er = EstacaoDeReserva()
         clock = 0
+        pc = []
+        pc.append(0)
 
         caminho = './instruct.luix'
         conteudo = self.ler_arquivo(caminho)
@@ -266,7 +310,7 @@ class Tomasulo:
 
         # unidades funcionais
         ufs = [] 
-        tmpInst = Instrucao(0,0,0,0,0,0,0,0,0,0) # TMP apenas para formato
+        tmpInst = Instrucao(0,0,0,0,0,0,0,0,0,0,0,0,0) # TMP apenas para formato
 
         ufALU_1 = Unidades_Funcionais('ALU', 2 -1, tmpInst, False, 0)
         #ufALU_1._start_("ALU", 2, False)
@@ -285,9 +329,9 @@ class Tomasulo:
         ufs = [ufALU_1, ufALU_2, ufMULT, ufMEM, ufBR]
         
 
-        # ---- Tomasulu ---- # loop
-        while instrucoes[-1].write_result < 0:
-            for i in range(clock*2, 2 + clock*2):          # Instuçoes sao carregadas nas estacoes
+        # ---- Tomasulo ---- # loop
+        while not self.verifica_parada(instrucoes,pc): # condicao de parada
+            for i in range(pc[0], pc[0]+2):             # Instuçoes sao carregadas nas estacoes
                 if i < len(instrucoes):
                     inst = instrucoes[i]
                     if inst.tipo == "ALU":
@@ -306,16 +350,19 @@ class Tomasulo:
                         inst.issue = clock
                         inst.status = "ER"
                         erBR.append(inst)
+            if pc[0] < len(instrucoes):
+                pc[0] = pc[0] +2
         
-            # Despacho de instrucao
-            self.atualizar_inst(instrucoes, clock, m)
+            
+            self.WR(instrucoes, clock)
+            self.atualizar_inst(instrucoes, clock, m, pc)
             
             self.despacho(instrucoes, ufs, erALU, erMULT,erMEM, erBR)
             self.atualiza_clock(ufs, clock)
             
 
             print("---------------------------------------")
-            print(clock)
+            print(f"{clock} __ {pc[0]}" )
             self.imprimir_tabela(instrucoes)
             clock = clock + 1
             #print(ufs[0].instrucao.exec_completa)
@@ -327,3 +374,10 @@ class Tomasulo:
 
 t = Tomasulo()
 t.simulador()
+
+'''
+Falta predicao
+Renomeacao
+ajuste de interface
+etc...
+'''
