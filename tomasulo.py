@@ -200,7 +200,7 @@ class Tomasulo:
             
         return instrucoes_decodificadas
     
-    def despacho(self, instrucoes, ufs, erALU, erMULT,erMEM, erBR, renomeado):
+    def despacho(self, instrucoes, ufs, erALU, erMULT,erMEM, erBR, renomeado, bolhas):
         for u in ufs:  
             
             if u.Ocupado == False and u.nome == "ALU" and len(erALU) > 0:
@@ -216,6 +216,8 @@ class Tomasulo:
                             u.vida = 0
                             u.instrucao.status = "UF"
                             saida = True
+                if saida:
+                    bolhas[0] = bolhas[0] + 1
 
             if u.Ocupado == False and u.nome == "MULT" and len(erMULT) > 0:
                 saida = False
@@ -230,6 +232,8 @@ class Tomasulo:
                             u.vida = 0
                             u.instrucao.status = "UF"
                             saida = True
+                if saida:
+                    bolhas[0] = bolhas[0] + 1
 
             if u.Ocupado == False and u.nome == "MEM" and len(erMEM) > 0:
                 saida = False
@@ -244,6 +248,8 @@ class Tomasulo:
                             u.vida = 0
                             u.instrucao.status = "UF"
                             saida = True
+                if saida:
+                    bolhas[0] = bolhas[0] + 1
 
             if u.Ocupado == False and u.nome == "BR" and len(erBR) > 0:
                 saida = False
@@ -258,6 +264,8 @@ class Tomasulo:
                             u.vida = 0
                             u.instrucao.status = "UF"
                             saida = True
+                if saida:
+                    bolhas[0] = bolhas[0] + 1
           
     def atualiza_clock(self, ufs, clock):
         tmpInst = Instrucao(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
@@ -375,6 +383,11 @@ class Tomasulo:
                 f"{inst.tipo:<8} {inst.posi:<5} {inst.status:<12} {str(inst.value):<8} "
                 f"{str(inst.podeExecutar):<10} {str(inst.previsao):<12} {str(inst.rename):<10}")
 
+    def nop_renema(self, instrucoes, renomeado):
+        for i in instrucoes:
+            if not i.podeExecutar:
+                renomeado.clear(i)
+                i.rename = i.nome
 
     def sem_dependencias(self, instrucoes, instruc):#, i, j, k, posi):
         print("---------------------------------------")
@@ -440,6 +453,8 @@ class Tomasulo:
         clock = 0
         pc = []
         pc.append(0)
+        bolhas = []
+        bolhas.append(0)
 
         previsao = []
         previsao.append(0)
@@ -512,9 +527,9 @@ class Tomasulo:
             self.WR(instrucoes, clock, previsao, m, pc)
             self.atualizar_inst(instrucoes, clock, m, renomeado, previsao)
             
-            self.despacho(instrucoes, ufs, erALU, erMULT,erMEM, erBR, renomeado)
+            self.despacho(instrucoes, ufs, erALU, erMULT,erMEM, erBR, renomeado, bolhas)
             self.atualiza_clock(ufs, clock)
-            
+            self.nop_renema(instrucoes, renomeado)
 
             print("---------------------------------------")
             print(f"{clock} __ {pc[0]}" )
@@ -522,7 +537,9 @@ class Tomasulo:
             clock = clock + 1
             #print(ufs[0].instrucao.exec_completa)
         #print(instrucoes[-1].write_result)
-
+        print("###---------------------------------------###")
+        print(f"Cicllos: {clock-1} __ Bolhas: {bolhas[0]}" )
+        print(f"IPC: {len(instrucoes)/(clock-1)}")
 
 
         # ---- Tomasulu ---- # loop
@@ -533,6 +550,9 @@ t.simulador()
 '''
 
 Renomeacao ---
+IPC, 
+quantidade de ciclos gastos, 
+quantidade de ciclos de bolha
 ajuste de interface
 etc...
 '''

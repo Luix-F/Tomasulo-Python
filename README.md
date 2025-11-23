@@ -1,1 +1,1 @@
-Simulador do algoritmos Tomasulo
+Tomasulu, versão acadêmica do algoritmo de Tomasulo desenvolvido em Python
