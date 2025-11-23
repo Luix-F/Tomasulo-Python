@@ -369,15 +369,43 @@ class Tomasulo:
                             instrucoes[y].write_result = -1 
                             instrucoes[y].commit = -1
 
+    def gravar_tabela(self, instrucoes):
+        frase1 = ""
+        frase2 = ""
+        frase3 = ""
+        frase1 = (f"{'Nome':<12} {'i':<3} {'j':<3} {'k':<3} "
+            f"{'Issue':<10} {'Exec':<6} {'Write':<7} {'Commit':<10} "
+            f"{'Tipo':<8} {'Posi':<5} {'Status':<12} {'Value':<8} "
+            f"{'PodeExec':<10} {'Previsao':<12} {'Rename':<10}\n")
+        frase2 = ("-" * 135)
+        frase2 = frase2 + "\n"
+
+        for inst in instrucoes:
+            frase3 = frase3 + (f"{inst.nome:<12} {inst.i:<3} {inst.j:<3} {inst.k:<3} "
+                    f"{inst.issue:<10} {str(inst.exec_completa):<6} {str(inst.write_result):<7} {str(inst.commit):<10} "
+                    f"{inst.tipo:<8} {inst.posi:<5} {inst.status:<12} {str(inst.value):<8} "
+                    f"{str(inst.podeExecutar):<10} {str(inst.previsao):<12} {str(inst.rename):<10}\n")
+            
+        frase3 = frase3 + "\n"
+
+        return frase1 + frase2 + frase3
+
     def imprimir_tabela(self, instrucoes):
+        
+        
+
         print(f"{'Nome':<12} {'i':<3} {'j':<3} {'k':<3} "
             f"{'Issue':<10} {'Exec':<6} {'Write':<7} {'Commit':<10} "
             f"{'Tipo':<8} {'Posi':<5} {'Status':<12} {'Value':<8} "
             f"{'PodeExec':<10} {'Previsao':<12} {'Rename':<10}")
+        
+        
 
         print("-" * 135)
 
         for inst in instrucoes:
+            
+            
             print(f"{inst.nome:<12} {inst.i:<3} {inst.j:<3} {inst.k:<3} "
                 f"{inst.issue:<10} {str(inst.exec_completa):<6} {str(inst.write_result):<7} {str(inst.commit):<10} "
                 f"{inst.tipo:<8} {inst.posi:<5} {inst.status:<12} {str(inst.value):<8} "
@@ -496,7 +524,7 @@ class Tomasulo:
         #ufBR._start_("BR", 1, False)
 
         ufs = [ufALU_1, ufALU_2, ufMULT, ufMEM, ufBR]
-        
+        ss = []
 
         # ---- Tomasulo ---- # loop
         while not self.verifica_parada(instrucoes,pc): # condicao de parada
@@ -533,10 +561,17 @@ class Tomasulo:
 
             print("---------------------------------------")
             print(f"{clock} __ {pc[0]}" )
-            self.imprimir_tabela(instrucoes)
+
+            
+            ss.append(self.gravar_tabela(instrucoes))
+            
             clock = clock + 1
+
             #print(ufs[0].instrucao.exec_completa)
         #print(instrucoes[-1].write_result)
+
+        for i in range(len(instrucoes)):
+            print(ss[i])
         print("###---------------------------------------###")
         print(f"Cicllos: {clock-1} __ Bolhas: {bolhas[0]}" )
         print(f"IPC: {len(instrucoes)/(clock-1)}")
