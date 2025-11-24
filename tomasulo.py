@@ -308,15 +308,22 @@ class Tomasulo:
 
                 if instr.nome == "ADD":
                     m.setR(instr.i, (m.getR(instr.j) + m.getR(instr.k)))
+                    instr.value = (m.getR(instr.j) + m.getR(instr.k))
                 if instr.nome == "SUB":
                     m.setR(instr.i, (m.getR(instr.j) - m.getR(instr.k)))
+                    instr.value = (m.getR(instr.j) - m.getR(instr.k))
+
                 if instr.nome == "MULT":
                     m.setR(instr.i, (m.getR(instr.j) * m.getR(instr.k)))
+                    instr.value = m.getR(instr.j) * m.getR(instr.k)
+
                 if instr.nome == "DIV":
                     m.setR(instr.i, (m.getR(instr.j) / m.getR(instr.k)))
+                    instr.value = m.getR(instr.j) / m.getR(instr.k)
 
                 if instr.nome == "LD":
                     instr.i = m.getM(instr.i, instr.j, instr.k)
+                    instr.value = m.getM(instr.i, instr.j, instr.k)
                     
                 if instr.nome == "SW":
                     m.setM(instr.i, instr.j, instr.k)
@@ -369,7 +376,145 @@ class Tomasulo:
                             instrucoes[y].write_result = -1 
                             instrucoes[y].commit = -1
 
-    def gravar_tabela(self, instrucoes):
+    buff = []
+    UniFunc = []
+    regregis = []
+
+    def gravar_tabela(self, instrucoes, ufs, mem):
+
+        matriz_instr = []
+
+        su = []
+        resul = []
+        for y in range(20):
+            su.append(f"$t{y}")
+            resul.append(str(mem.getR(su[y])))
+
+        # 1. Cabeçalhos
+        matriz_instr.append(
+            su
+        )
+
+        # 2. Linhas (uma por instrução)
+        for y in range(20):
+            matriz_instr.append(
+                resul
+                
+            )
+
+        self.regregis.append(matriz_instr)
+
+        matriz_instr = []
+
+        # 1. Cabeçalhos
+        matriz_instr.append([
+            "Tempo", "UF",
+            "Ocupado", "Op", "i", "j", "k"
+        ])
+
+        # 2. Linhas (uma por instrução)
+        for inst in ufs:
+            matriz_instr.append([
+                str(inst.vida),
+                str(inst.nome),
+                str(inst.Ocupado),
+                str(inst.instrucao.nome),
+                str(inst.instrucao.i),
+                str(inst.instrucao.j),
+                str(inst.instrucao.k)
+                
+            ])
+
+        self.UniFunc.append(matriz_instr)
+
+
+
+        # MATRIZ DO STATUS DAS INSTRUÇÕES
+        matriz_instr = []
+
+        # 1. Cabeçalhos
+        matriz_instr.append([
+            "Entrada", "instrução",
+            "Status", "Destino", "Valor"
+        ])
+
+        # 2. Linhas (uma por instrução)
+        for inst in instrucoes:
+            matriz_instr.append([
+                str(inst.posi),
+                f"{str(inst.nome)} {str(inst.i)} {str(inst.j)} {str(inst.k)}",
+                str(inst.status),
+                str(inst.rename),
+                str(inst.value)
+                
+            ])
+
+        self.buff.append(matriz_instr)
+
+
+
+        matriz_instr = []
+
+
+
+        # 1. Cabeçalhos
+        matriz_instr.append([
+            "Nome", "i", "j", "k",
+            "Issue", "Exec", "Write", "Commit",
+            "Posi", "Status"
+        ])
+
+        # 2. Linhas (uma por instrução)
+        for inst in instrucoes:
+            matriz_instr.append([
+                str(inst.rename),
+                str(inst.i),
+                str(inst.j),
+                str(inst.k),
+                str(inst.issue),
+                str(inst.exec_completa),
+                str(inst.write_result),
+                str(inst.commit),
+
+                str(inst.posi),
+                inst.status
+                
+            ])
+
+        self.status_das_instrucoes.append(matriz_instr)
+
+        matriz_instr = []
+
+        # 1. Cabeçalhos
+        matriz_instr.append([
+            "Nome", "i", "j", "k",
+            "Issue", "Exec", "Write", "Commit",
+            "Tipo", "Posi", "Status", "Value",
+            "PodeExec", "Previsao", "Rename"
+        ])
+
+        # 2. Linhas (uma por instrução)
+        for inst in instrucoes:
+            matriz_instr.append([
+                inst.nome,
+                str(inst.i),
+                str(inst.j),
+                str(inst.k),
+                str(inst.issue),
+                str(inst.exec_completa),
+                str(inst.write_result),
+                str(inst.commit),
+                inst.tipo,
+                str(inst.posi),
+                inst.status,
+                str(inst.value),
+                str(inst.podeExecutar),
+                str(inst.previsao),
+                str(inst.rename)
+            ])
+
+        self.geral.append(matriz_instr)
+
         frase1 = ""
         frase2 = ""
         frase3 = ""
@@ -387,8 +532,8 @@ class Tomasulo:
                     f"{str(inst.podeExecutar):<10} {str(inst.previsao):<12} {str(inst.rename):<10}\n")
             
         frase3 = frase3 + "\n"
-
-        return frase1 + frase2 + frase3
+        
+        #return frase1 + frase2 + frase3
 
     def imprimir_tabela(self, instrucoes):
         
@@ -475,6 +620,8 @@ class Tomasulo:
         #return instrucoes[-1].status == "commit"
         return not any(obj.status not in ("commit", "nop") for obj in instrucoes)
      
+    bobolhas = []
+    IIpc = []
     def simulador(self):
         
         #er = EstacaoDeReserva()
@@ -483,6 +630,8 @@ class Tomasulo:
         pc.append(0)
         bolhas = []
         bolhas.append(0)
+
+        
 
         previsao = []
         previsao.append(0)
@@ -563,25 +712,35 @@ class Tomasulo:
             print(f"{clock} __ {pc[0]}" )
 
             
-            ss.append(self.gravar_tabela(instrucoes))
-            
+            #ss.append(self.gravar_tabela(instrucoes))
+            self.gravar_tabela(instrucoes, ufs, m)
             clock = clock + 1
+            self.bobolhas.append(bolhas[0])
+            if clock > 1:
+                self.IIpc.append((len(instrucoes)/(clock-1)))
+            else:
+                self.IIpc.append(0)
 
             #print(ufs[0].instrucao.exec_completa)
         #print(instrucoes[-1].write_result)
 
-        for i in range(len(instrucoes)):
-            print(ss[i])
+
+        #for i in range(len(instrucoes)):
+            #print(ss[i])
         print("###---------------------------------------###")
         print(f"Cicllos: {clock-1} __ Bolhas: {bolhas[0]}" )
         print(f"IPC: {len(instrucoes)/(clock-1)}")
 
+        
+
+
 
         # ---- Tomasulu ---- # loop
+    geral = []
+    status_das_instrucoes = []
 
-t = Tomasulo()
-t.simulador()
-
+#t = Tomasulo()
+#t.simulador()
 '''
 
 Renomeacao ---
